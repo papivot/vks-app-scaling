@@ -1,0 +1,72 @@
+# KEDA via Helm Chart
+# Deployed via HelmRepository + HelmRelease in keda namespace
+# Reference: https://github.com/kedacore/charts/blob/main/keda/values.yaml
+---
+apiVersion: source.toolkit.fluxcd.io/v1
+kind: HelmRepository
+metadata:
+  name: kedacore
+  namespace: keda
+spec:
+  interval: 5m
+  url: https://kedacore.github.io/charts
+---
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: keda
+  namespace: keda
+spec:
+  interval: 5m
+  chart:
+    spec:
+      chart: keda
+      sourceRef:
+        kind: HelmRepository
+        name: kedacore
+        namespace: keda
+      version: 2.19.x
+  install:
+    crds: Create
+  upgrade:
+    crds: CreateReplace
+  values:
+    # Enable CRDs
+    crds:
+      install: true
+
+    # KEDA Operator
+    operator:
+      replicaCount: 1
+
+    # KEDA Metrics Server
+    metricsServer:
+      enabled: true
+      replicaCount: 1
+
+    # KEDA Webhooks
+    webhooks:
+      enabled: true
+      replicaCount: 1
+
+    # Pod disruption budgets for HA
+    podDisruptionBudget:
+      operator:
+        minAvailable: 1
+      metricServer:
+        minAvailable: 1
+      webhooks:
+        minAvailable: 1
+
+    # Pod security contexts
+    podSecurityContext:
+      operator:
+        runAsNonRoot: true
+      metricServer:
+        runAsNonRoot: true
+      webhooks:
+        runAsNonRoot: true
+
+    # RBAC
+    rbac:
+      create: true

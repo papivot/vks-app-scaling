@@ -1,0 +1,107 @@
+# Descheduler via Kubernetes-official Helm Chart
+# Deployed via Flux CD HelmRepository + HelmRelease in kube-system namespace
+# Runs as a Deployment (not CronJob) for continuous rebalancing
+# Reference: https://github.com/kubernetes-sigs/descheduler/blob/master/charts/descheduler/values.yaml
+---
+apiVersion: source.toolkit.fluxcd.io/v1
+kind: HelmRepository
+metadata:
+  name: descheduler-k8s
+  namespace: kube-system
+spec:
+  interval: 5m
+  url: https://kubernetes-sigs.github.io/descheduler/
+---
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: descheduler
+  namespace: kube-system
+spec:
+  interval: 5m
+  chart:
+    spec:
+      chart: descheduler
+      sourceRef:
+        kind: HelmRepository
+        name: descheduler-k8s
+        namespace: kube-system
+      version: 0.36.x
+  install:
+    crds: Create
+  upgrade:
+    crds: CreateReplace
+  values:
+    # Deploy as Deployment (continuous rebalancing)
+    kind: Deployment
+    replicas: 1
+    
+    # Leader election for single replica
+    leaderElection: {}
+    
+    image:
+      repository: registry.k8s.io/descheduler/descheduler
+      tag: ""
+      pullPolicy: IfNotPresent
+        
+    deschedulerPolicy:
+      maxNoOfPodsToEvictPerNode: 10
+      maxNoOfPodsToEvictPerNamespace: 10
+      maxNoOfPodsToEvictTotal: 100
+      profiles:
+      - name: BalanceProfile
+        pluginConfig:
+        - name: DefaultEvictor
+          args:
+            podProtections:
+              defaultDisabled:
+              - "PodsWithLocalStorage"
+              - "SystemCriticalPods"
+              - "DaemonSetPods"
+              - "FailedBarePods"
+        - name: RemovePodsViolatingInterPodAntiAffinity
+        - name: RemoveDuplicates
+        - name: LowNodeUtilization
+          args:
+            thresholds:
+              cpu: 20
+              memory: 20
+              pods: 20
+            targetThresholds:
+              cpu: 50
+              memory: 50
+              pods: 50
+        plugins:
+          balance:
+            enabled:
+            - LowNodeUtilization
+            - RemoveDuplicates
+          deschedule:
+            enabled:
+            - RemovePodsViolatingInterPodAntiAffinity
+          filter:
+            enabled:
+            - DefaultEvictor
+          preEvictionFilter:
+            enabled:
+            - DefaultEvictor    
+    resources:
+      requests:
+        cpu: 500m
+        memory: 256Mi
+      limits:
+        cpu: 500m
+        memory: 256Mi
+    
+    priorityClassName: system-cluster-critical
+        
+    # Annotations
+    deploymentAnnotations: {}
+    podAnnotations: {}
+    podLabels: {}
+    
+    # No tolerations by default
+    tolerations: []
+    
+    # No node selector by default
+    nodeSelector: {}
