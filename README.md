@@ -18,7 +18,7 @@ A comprehensive, production-ready autoscaling reference for **vSphere Kubernetes
 │  Layer 1: Pod Resources (Vertical)                   │
 │  VPA — right-sizes CPU and memory requests/limits    │
 ├──────────────────────────────────────────────────────┤
-│  Layer 0: Application                                │
+│  Layer 0: Application - Sample app ..                │
 │  Online Boutique — 11 microservices (gRPC + HTTP)    │
 └──────────────────────────────────────────────────────┘
 ```
