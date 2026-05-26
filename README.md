@@ -1,4 +1,4 @@
-# VKS Scaling Solution Design Library
+# VKS Scaling Solution Design
 
 A comprehensive, production-ready autoscaling reference for **vSphere Kubernetes Service** clusters running microservice workloads. Uses the [Google Online Boutique](https://github.com/GoogleCloudPlatform/microservices-demo) e-commerce demo (11 microservices) to illustrate real-world scenarios.
 
