@@ -1,0 +1,92 @@
+# KEDA ScaledObject — Redis Scaler (Cart Database Operations)
+#
+# Scales currencyservice based on cart database activity in Redis.
+# Online Boutique uses Redis for the shopping cart database (redis-cart).
+# High cart activity (many concurrent transactions) triggers scaling.
+#
+# PREREQUISITES:
+#   - Redis available at redis-cart.online-boutique.svc.cluster.local:6379
+#   - KEDA installed (already present)
+#   - Redis storing cart data (keys prefixed with "cart:" or similar)
+#
+# SCALING LOGIC:
+#   - dbSize: monitors total number of keys in Redis
+#   - Higher key count (more active carts) → scale up currencyservice
+#   - databaseIndex: 0 (default Redis database for cart data)
+#   - Cooldown: 120s prevents thrashing
+#
+---
+# ============================================================
+# TriggerAuthentication — Redis connection (optional)
+# ============================================================
+apiVersion: keda.sh/v1alpha1
+kind: TriggerAuthentication
+metadata:
+  name: redis-trigger-auth
+  namespace: online-boutique
+spec:
+  # No auth needed for in-cluster Redis without credentials
+  # If Redis has password: add secretTargetRef for auth
+  podIdentity:
+    provider: none
+---
+# ============================================================
+# currencyservice — Redis Database Size Scaler
+# Scales based on cart database activity (number of keys in Redis)
+# ============================================================
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: keda-currencyservice-redis-cart
+  namespace: online-boutique
+  labels:
+    app: currencyservice
+    scaler: redis
+    trigger: cart-activity
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: currencyservice
+  # Scale-to-zero: minimum replicas when no cart activity
+  minReplicaCount: 1
+  # Maximum concurrent workers
+  maxReplicaCount: 15
+  # Prevent rapid scaling oscillations
+  cooldownPeriod: 120
+  # Poll Redis cart database every 10 seconds
+  pollingInterval: 10
+  # Behavioral scaling policies
+  advanced:
+    horizontalPodAutoscalerConfig:
+      behavior:
+        scaleDown:
+          # Wait 180s before scaling down (stable idle detection)
+          stabilizationWindowSeconds: 180
+          policies:
+          - type: Pods
+            value: 2
+            periodSeconds: 60
+        scaleUp:
+          # Scale up immediately when cart activity increases
+          stabilizationWindowSeconds: 0
+          policies:
+          - type: Pods
+            value: 5
+            periodSeconds: 15
+          selectPolicy: Max
+  # Redis database size trigger configuration
+  triggers:
+  - type: redis
+    metadata:
+      # Redis service endpoint (cart database)
+      address: redis-cart.online-boutique.svc.cluster.local:6379
+      # Monitor Redis database size (number of keys)
+      databaseIndex: "0"
+      # Each replica handles ~100 cart keys
+      # KEDA formula: ceil(db_size / dbSizeTrigger) = desired_replicas
+      dbSizeTrigger: "100"
+      # No TLS for in-cluster Redis
+      enableTLS: "false"
+    authenticationRef:
+      name: redis-trigger-auth

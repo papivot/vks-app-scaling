@@ -1,0 +1,357 @@
+# VPA Objects for Online Boutique Services
+# Mode: "Off" by default for services managed by KEDA/HPA on CPU metrics.
+#       Override per scenario (see scenarios/ directory).
+#
+# VPA + HPA CONFLICT RULE (enforced here):
+#   - Services with KEDA ScaledObjects (frontend, currencyservice): VPA mode = "Off"
+#     VPA still provides recommendations; KEDA owns replica count.
+#   - Services with CPU-based HPA: VPA mode = "Off" to prevent feedback loops.
+#   - Standalone services (no HPA/KEDA): VPA mode = "Auto" or "InPlaceOrRecreate".
+#
+# USAGE:
+#   kubectl apply -f vpa-objects.yaml
+#   kubectl get vpa -n online-boutique
+#   kubectl describe vpa <name> -n online-boutique   # view recommendations
+---
+# ============================================================
+# frontend - mode: Off (KEDA manages replicas; VPA advises only)
+# ============================================================
+apiVersion: autoscaling.k8s.io/v1
+kind: VerticalPodAutoscaler
+metadata:
+  name: vpa-frontend
+  namespace: online-boutique
+  labels:
+    app: frontend
+    vpa-role: advisory
+spec:
+  targetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: frontend
+  updatePolicy:
+    updateMode: "Off"
+  resourcePolicy:
+    containerPolicies:
+    - containerName: server
+      minAllowed:
+        cpu: 50m
+        memory: 64Mi
+      maxAllowed:
+        cpu: 2000m
+        memory: 1Gi
+      controlledResources: ["cpu", "memory"]
+      controlledValues: RequestsAndLimits
+---
+# ============================================================
+# currencyservice - mode: Off (KEDA manages replicas; VPA advises only)
+# ============================================================
+apiVersion: autoscaling.k8s.io/v1
+kind: VerticalPodAutoscaler
+metadata:
+  name: vpa-currencyservice
+  namespace: online-boutique
+  labels:
+    app: currencyservice
+    vpa-role: advisory
+spec:
+  targetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: currencyservice
+  updatePolicy:
+    updateMode: "Off"
+  resourcePolicy:
+    containerPolicies:
+    - containerName: server
+      minAllowed:
+        cpu: 50m
+        memory: 64Mi
+      maxAllowed:
+        cpu: 1000m
+        memory: 512Mi
+      controlledResources: ["cpu", "memory"]
+      controlledValues: RequestsAndLimits
+---
+# ============================================================
+# recommendationservice - mode: InPlaceOrRecreate
+# Primary target for Scenario 1 (Developer).
+# Python service - historically OOM-prone, memory-intensive ML workload.
+# ============================================================
+apiVersion: autoscaling.k8s.io/v1
+kind: VerticalPodAutoscaler
+metadata:
+  name: vpa-recommendationservice
+  namespace: online-boutique
+  labels:
+    app: recommendationservice
+    vpa-role: active
+    scenario: developer
+spec:
+  targetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: recommendationservice
+  updatePolicy:
+    updateMode: "InPlaceOrRecreate"
+    # Require at least 2 pods alive before updater acts (PDB enforcement)
+    minReplicas: 2
+  resourcePolicy:
+    containerPolicies:
+    - containerName: server
+      minAllowed:
+        cpu: 100m
+        memory: 64Mi
+      maxAllowed:
+        cpu: 2000m
+        memory: 2Gi
+      controlledResources: ["cpu", "memory"]
+      controlledValues: RequestsAndLimits
+---
+# ============================================================
+# emailservice - mode: Auto (no HPA/KEDA, low traffic, safe for auto)
+# ============================================================
+apiVersion: autoscaling.k8s.io/v1
+kind: VerticalPodAutoscaler
+metadata:
+  name: vpa-emailservice
+  namespace: online-boutique
+  labels:
+    app: emailservice
+    vpa-role: active
+spec:
+  targetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: emailservice
+  updatePolicy:
+    updateMode: "Auto"
+    minReplicas: 1
+  resourcePolicy:
+    containerPolicies:
+    - containerName: server
+      minAllowed:
+        cpu: 50m
+        memory: 64Mi
+      maxAllowed:
+        cpu: 500m
+        memory: 256Mi
+      controlledResources: ["cpu", "memory"]
+      controlledValues: RequestsAndLimits
+---
+# ============================================================
+# checkoutservice - mode: Auto
+# ============================================================
+apiVersion: autoscaling.k8s.io/v1
+kind: VerticalPodAutoscaler
+metadata:
+  name: vpa-checkoutservice
+  namespace: online-boutique
+  labels:
+    app: checkoutservice
+    vpa-role: active
+spec:
+  targetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: checkoutservice
+  updatePolicy:
+    updateMode: "Auto"
+    minReplicas: 2
+  resourcePolicy:
+    containerPolicies:
+    - containerName: server
+      minAllowed:
+        cpu: 50m
+        memory: 64Mi
+      maxAllowed:
+        cpu: 1000m
+        memory: 512Mi
+      controlledResources: ["cpu", "memory"]
+      controlledValues: RequestsAndLimits
+---
+# ============================================================
+# productcatalogservice - mode: Auto
+# ============================================================
+apiVersion: autoscaling.k8s.io/v1
+kind: VerticalPodAutoscaler
+metadata:
+  name: vpa-productcatalogservice
+  namespace: online-boutique
+  labels:
+    app: productcatalogservice
+    vpa-role: active
+spec:
+  targetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: productcatalogservice
+  updatePolicy:
+    updateMode: "Auto"
+    minReplicas: 2
+  resourcePolicy:
+    containerPolicies:
+    - containerName: server
+      minAllowed:
+        cpu: 50m
+        memory: 64Mi
+      maxAllowed:
+        cpu: 1000m
+        memory: 512Mi
+      controlledResources: ["cpu", "memory"]
+      controlledValues: RequestsAndLimits
+---
+# ============================================================
+# cartservice - mode: Auto
+# ============================================================
+apiVersion: autoscaling.k8s.io/v1
+kind: VerticalPodAutoscaler
+metadata:
+  name: vpa-cartservice
+  namespace: online-boutique
+  labels:
+    app: cartservice
+    vpa-role: active
+spec:
+  targetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: cartservice
+  updatePolicy:
+    updateMode: "Auto"
+    minReplicas: 2
+  resourcePolicy:
+    containerPolicies:
+    - containerName: server
+      minAllowed:
+        cpu: 50m
+        memory: 64Mi
+      maxAllowed:
+        cpu: 1000m
+        memory: 512Mi
+      controlledResources: ["cpu", "memory"]
+      controlledValues: RequestsAndLimits
+---
+# ============================================================
+# paymentservice - mode: Auto (financial service, tight bounds)
+# ============================================================
+apiVersion: autoscaling.k8s.io/v1
+kind: VerticalPodAutoscaler
+metadata:
+  name: vpa-paymentservice
+  namespace: online-boutique
+  labels:
+    app: paymentservice
+    vpa-role: active
+spec:
+  targetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: paymentservice
+  updatePolicy:
+    updateMode: "Auto"
+    minReplicas: 2
+  resourcePolicy:
+    containerPolicies:
+    - containerName: server
+      minAllowed:
+        cpu: 50m
+        memory: 64Mi
+      maxAllowed:
+        cpu: 500m
+        memory: 256Mi
+      controlledResources: ["cpu", "memory"]
+      controlledValues: RequestsAndLimits
+---
+# ============================================================
+# shippingservice - mode: Auto
+# ============================================================
+apiVersion: autoscaling.k8s.io/v1
+kind: VerticalPodAutoscaler
+metadata:
+  name: vpa-shippingservice
+  namespace: online-boutique
+  labels:
+    app: shippingservice
+    vpa-role: active
+spec:
+  targetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: shippingservice
+  updatePolicy:
+    updateMode: "Auto"
+    minReplicas: 1
+  resourcePolicy:
+    containerPolicies:
+    - containerName: server
+      minAllowed:
+        cpu: 50m
+        memory: 64Mi
+      maxAllowed:
+        cpu: 500m
+        memory: 256Mi
+      controlledResources: ["cpu", "memory"]
+      controlledValues: RequestsAndLimits
+---
+# ============================================================
+# adservice - mode: Auto (Java, large baseline memory footprint)
+# ============================================================
+apiVersion: autoscaling.k8s.io/v1
+kind: VerticalPodAutoscaler
+metadata:
+  name: vpa-adservice
+  namespace: online-boutique
+  labels:
+    app: adservice
+    vpa-role: active
+spec:
+  targetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: adservice
+  updatePolicy:
+    updateMode: "Auto"
+    minReplicas: 1
+  resourcePolicy:
+    containerPolicies:
+    - containerName: server
+      minAllowed:
+        cpu: 100m
+        memory: 256Mi
+      maxAllowed:
+        cpu: 1000m
+        memory: 2Gi
+      controlledResources: ["cpu", "memory"]
+      controlledValues: RequestsAndLimits
+---
+# ============================================================
+# redis-cart - mode: Initial only (stateful; no live resizing)
+# Initial mode sets correct requests on first pod creation only.
+# ============================================================
+apiVersion: autoscaling.k8s.io/v1
+kind: VerticalPodAutoscaler
+metadata:
+  name: vpa-redis-cart
+  namespace: online-boutique
+  labels:
+    app: redis-cart
+    vpa-role: initial
+spec:
+  targetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: redis-cart
+  updatePolicy:
+    updateMode: "Initial"
+  resourcePolicy:
+    containerPolicies:
+    - containerName: redis
+      minAllowed:
+        cpu: 50m
+        memory: 128Mi
+      maxAllowed:
+        cpu: 500m
+        memory: 1Gi
+      controlledResources: ["cpu", "memory"]
+      controlledValues: RequestsAndLimits

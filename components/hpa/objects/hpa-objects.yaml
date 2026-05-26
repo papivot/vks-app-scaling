@@ -1,0 +1,156 @@
+# HPA Objects for Online Boutique — Services NOT managed by KEDA
+#
+# SCOPE: Services where CPU-based HPA is appropriate and VPA conflict is managed.
+#
+# KEDA manages: frontend, currencyservice (DO NOT add HPA for those here)
+#
+# VPA + HPA CONFLICT RULE APPLIED:
+#   All HPAs here scale on MEMORY utilization (not CPU) OR on pod count minimums.
+#   VPA manages CPU right-sizing independently without interference.
+#   Alternative: set VPA controlledResources to ["memory"] only for these services.
+#
+# SERVICES INCLUDED:
+#   - checkoutservice    (critical path; needs replica redundancy)
+#   - productcatalogservice (moderate traffic; catalog reads spike with traffic)
+#   - recommendationservice (excluded: VPA InPlaceOrRecreate owns this in Scenario 1)
+#
+# SERVICES EXCLUDED (reasons noted):
+#   - frontend:           KEDA-managed
+#   - currencyservice:    KEDA-managed
+#   - recommendationservice: VPA-managed (Scenario 1); HPA would conflict
+#   - emailservice:       Low traffic; VPA Auto is sufficient
+#   - paymentservice:     Low replica count acceptable; VPA handles sizing
+#   - shippingservice:    Low traffic; VPA Auto is sufficient
+#   - adservice:          Java startup cost too high for rapid scale; use VPA
+#   - redis-cart:         Stateful; do not HPA
+#   - cartservice:        Stateful-like (Redis backend); session stickiness risk
+#
+# USAGE:
+#   kubectl apply -f hpa-objects.yaml
+#   kubectl get hpa -n online-boutique
+---
+# ============================================================
+# checkoutservice HPA
+# Scales replicas based on memory utilization.
+# VPA handles CPU right-sizing independently.
+# ============================================================
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: hpa-checkoutservice
+  namespace: online-boutique
+  labels:
+    app: checkoutservice
+    scaler: hpa
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: checkoutservice
+  minReplicas: 2
+  maxReplicas: 10
+  metrics:
+  # Scale on memory utilization; VPA manages CPU so we avoid CPU HPA
+  - type: Resource
+    resource:
+      name: memory
+      target:
+        type: Utilization
+        averageUtilization: 70
+  behavior:
+    scaleDown:
+      stabilizationWindowSeconds: 180
+      policies:
+      - type: Pods
+        value: 1
+        periodSeconds: 60
+    scaleUp:
+      stabilizationWindowSeconds: 30
+      policies:
+      - type: Pods
+        value: 2
+        periodSeconds: 30
+      selectPolicy: Max
+---
+# ============================================================
+# productcatalogservice HPA
+# Catalog reads spike proportionally with frontend traffic.
+# ============================================================
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: hpa-productcatalogservice
+  namespace: online-boutique
+  labels:
+    app: productcatalogservice
+    scaler: hpa
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: productcatalogservice
+  minReplicas: 2
+  maxReplicas: 10
+  metrics:
+  - type: Resource
+    resource:
+      name: memory
+      target:
+        type: Utilization
+        averageUtilization: 70
+  behavior:
+    scaleDown:
+      stabilizationWindowSeconds: 120
+      policies:
+      - type: Pods
+        value: 1
+        periodSeconds: 60
+    scaleUp:
+      stabilizationWindowSeconds: 0
+      policies:
+      - type: Pods
+        value: 2
+        periodSeconds: 30
+      selectPolicy: Max
+---
+# ============================================================
+# cartservice HPA
+# Cart reads/writes grow linearly with active users.
+# Conservative max replicas due to Redis session affinity.
+# ============================================================
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: hpa-cartservice
+  namespace: online-boutique
+  labels:
+    app: cartservice
+    scaler: hpa
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: cartservice
+  minReplicas: 2
+  maxReplicas: 8
+  metrics:
+  - type: Resource
+    resource:
+      name: memory
+      target:
+        type: Utilization
+        averageUtilization: 75
+  behavior:
+    scaleDown:
+      stabilizationWindowSeconds: 300
+      policies:
+      - type: Pods
+        value: 1
+        periodSeconds: 120
+    scaleUp:
+      stabilizationWindowSeconds: 30
+      policies:
+      - type: Pods
+        value: 2
+        periodSeconds: 30
+      selectPolicy: Max
