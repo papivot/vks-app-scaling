@@ -38,7 +38,7 @@ A comprehensive, production-ready autoscaling reference for **vSphere Kubernetes
 
 ## Architecture Overview
 
-This library implements a multi-layer autoscaling architecture for vSphere Kubernetes Service (VKS) clusters running microservice workloads. The design uses five complementary tools — each operating at a distinct layer — to address resource efficiency, capacity management, and cost optimization.
+This library implements a multi-layer autoscaling architecture for VKS clusters running microservice workloads. The design uses five complementary tools — each operating at a distinct layer — to address resource efficiency, capacity management, and cost optimization.
 
 ## Design Principles
 
@@ -134,19 +134,6 @@ Cluster Autoscaler adds new nodes
 | `adservice` | Java | Auto | None | — |
 | `redis-cart` | Redis | Initial | None | — |
 
-## Scenario-to-Component Matrix
-
-```
-Component         │ Scenario 1  │ Scenario 2  │ Scenario 3
-                  │ Developer   │ SRE         │ Manager
-──────────────────┼─────────────┼─────────────┼──────────────
-VPA               │ InPlaceOrRe │ Off (advise)│ Off (advise)
-HPA               │ Memory-only │ —           │ —
-KEDA              │ —           │ QPS-based   │ —
-Descheduler       │ —           │ Balance     │ Bin-Packing
-Cluster Autoscaler│ Indirect*   │ Node add    │ Node remove
-PDB               │ Yes         │ Yes         │ Via PriorityClass
-──────────────────┴─────────────┴─────────────┴──────────────
 
 * Indirect: VPA sets accurate requests → CA has correct data for all scenarios
 ```
