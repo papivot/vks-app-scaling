@@ -1,0 +1,9 @@
+apiVersion: addons.kubernetes.vmware.com/v1alpha1
+kind: AddonRepositoryInstall
+metadata:
+  name: vpa-repo-install
+  namespace: vmware-system-vks-public
+spec:
+  addonRepositoryRef:
+    name: vpa-repo
+    namespace: vmware-system-vks-public

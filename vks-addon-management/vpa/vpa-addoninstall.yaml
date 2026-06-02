@@ -1,0 +1,12 @@
+apiVersion: addons.kubernetes.vmware.com/v1alpha1
+kind: AddonInstall
+metadata:
+  name: vpa-install
+  namespace: test-ns
+spec:
+  addonRef:
+    name: vertical-pod-autoscaler
+  releaseFilter:
+    ref:
+      name: vertical-pod-autoscaler.0.9.0
+  clusters: []

@@ -1,0 +1,12 @@
+apiVersion: addons.kubernetes.vmware.com/v1alpha1
+kind: AddonInstall
+metadata:
+  name: keda-install
+  namespace: test-ns
+spec:
+  addonRef:
+    name: keda
+  releaseFilter:
+    ref:
+      name: keda.2.19.0
+  clusters: []

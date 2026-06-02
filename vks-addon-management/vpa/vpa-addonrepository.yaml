@@ -1,0 +1,20 @@
+apiVersion: addons.kubernetes.vmware.com/v1alpha1
+kind: AddonRepository
+metadata:
+  name: vpa-repo
+  namespace: vmware-system-vks-public
+  annotations:
+    addons.kubernetes.vmware.com/package-offerings: |
+      {
+        "repositoryVersion": "1.0.0"
+      }
+spec:
+  targetRepositoryName: vpa
+  version: "1.0.0"
+  fetch:
+    helmRepository:
+      url: https://kubernetes.github.io/autoscaler
+  addonFilters:
+    - name: vertical-pod-autoscaler
+      versions:
+        - "0.9.0"

@@ -1,0 +1,12 @@
+apiVersion: addons.kubernetes.vmware.com/v1alpha1
+kind: AddonInstall
+metadata:
+  name: descheduler-install
+  namespace: test-ns
+spec:
+  addonRef:
+    name: descheduler
+  releaseFilter:
+    ref:
+      name: descheduler.0.34.0
+  clusters: []
