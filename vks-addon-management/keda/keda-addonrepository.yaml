@@ -1,0 +1,20 @@
+apiVersion: addons.kubernetes.vmware.com/v1alpha1
+kind: AddonRepository
+metadata:
+  name: keda-repo
+  namespace: vmware-system-vks-public
+  annotations:
+    addons.kubernetes.vmware.com/package-offerings: |
+      {
+        "repositoryVersion": "1.0.0"
+      }
+spec:
+  targetRepositoryName: kedacore
+  version: "1.0.0"
+  fetch:
+    helmRepository:
+      url: https://kedacore.github.io/charts
+  addonFilters:
+    - name: keda
+      versions:
+        - "2.19.0"

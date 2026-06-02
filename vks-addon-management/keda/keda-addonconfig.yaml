@@ -1,0 +1,25 @@
+apiVersion: addons.kubernetes.vmware.com/v1alpha1
+kind: AddonConfig
+metadata:
+  # Must follow {clustername}-{addonname}, for example prod-vks-01-keda.
+  name: gc-keda
+  namespace: test-ns
+spec:
+  values:
+    helmOptions:
+      targetNamespace: "kube-system"
+    helmValues:
+      podAnnotations:
+        keda:
+          prometheus.io/port: "8080"
+          prometheus.io/scrape: "true"
+        webhooks:
+          prometheus.io/port: "8080"
+          prometheus.io/scrape: "true"
+      prometheus:
+        metricsServer:
+          enabled: true
+        operator:
+          enabled: true
+        webhooks:
+          enabled: true

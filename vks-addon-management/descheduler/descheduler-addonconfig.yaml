@@ -1,0 +1,91 @@
+apiVersion: addons.kubernetes.vmware.com/v1alpha1
+kind: AddonConfig
+metadata:
+  # Must follow {clustername}-{addonname}, for example prod-vks-01-descheduler.
+  name: gc-descheduler
+  namespace: test-ns
+spec:
+  values:
+    helmOptions:
+      targetNamespace: "kube-system"
+    helmValues:
+      kind: Deployment
+
+      resources:
+        requests:
+          cpu: 50m
+          memory: 64Mi
+        limits:
+          cpu: 500m
+          memory: 256Mi
+
+      # deschedulerPolicy contains the policies the descheduler will execute.
+      deschedulerPolicy:
+        nodeSelector: "!node-role.kubernetes.io/control-plane"
+        # maxNoOfPodsToEvictPerNode: 10
+        # maxNoOfPodsToEvictPerNamespace: 10
+        # metricsProviders:
+        # - source: KubernetesMetrics
+        # tracing:
+        #   collectorEndpoint: otel-collector.observability.svc.cluster.local:4317
+        #   transportCert: ""
+        #   serviceName: ""
+        #   serviceNamespace: ""
+        #   sampleRate: 1.0
+        #   fallbackToNoOpProviderOnError: true
+        profiles:
+          - name: default
+            pluginConfig:
+              - name: DefaultEvictor
+                args:
+                  podProtections:
+                    defaultDisabled:
+                    - "PodsWithLocalStorage"
+                    extraEnabled:
+                    - "PodsWithPVC"
+              - name: RemoveDuplicates
+              - name: RemovePodsHavingTooManyRestarts
+                args:
+                  podRestartThreshold: 100
+                  includingInitContainers: true
+              - name: RemovePodsViolatingNodeAffinity
+                args:
+                  nodeAffinityType:
+                  - requiredDuringSchedulingIgnoredDuringExecution
+              - name: RemovePodsViolatingNodeTaints
+              - name: RemovePodsViolatingInterPodAntiAffinity
+              - name: RemovePodsViolatingTopologySpreadConstraint
+              - name: LowNodeUtilization
+                args:
+                  thresholds:
+                    cpu: 20
+                    memory: 20
+                    pods: 20
+                  targetThresholds:
+                    cpu: 50
+                    memory: 50
+                    pods: 50
+            plugins:
+              balance:
+                enabled:
+                  - RemoveDuplicates
+                  - RemovePodsViolatingTopologySpreadConstraint
+                  - LowNodeUtilization
+              deschedule:
+                enabled:
+                  - RemovePodsHavingTooManyRestarts
+                  - RemovePodsViolatingNodeTaints
+                  - RemovePodsViolatingNodeAffinity
+                  - RemovePodsViolatingInterPodAntiAffinity
+
+      priorityClassName: system-cluster-critical
+
+      nodeSelector:
+        node-role.kubernetes.io/control-plane: ""
+
+      podAnnotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "10258"
+        prometheus.io/path: "/metrics"
+        prometheus.io/scheme: "https"
+        prometheus.io/insecure_skip_verify: "true"

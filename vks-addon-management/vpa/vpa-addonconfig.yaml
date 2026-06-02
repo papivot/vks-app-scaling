@@ -1,0 +1,10 @@
+apiVersion: addons.kubernetes.vmware.com/v1alpha1
+kind: AddonConfig
+metadata:
+  # Must follow {clustername}-{addonname}, for example prod-vks-01-vertical-pod-autoscaler.
+  name: gc-vertical-pod-autoscaler
+  namespace: test-ns
+spec:
+  values:
+    helmOptions:
+      targetNamespace: "kube-system"

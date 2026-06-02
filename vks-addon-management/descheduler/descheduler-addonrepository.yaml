@@ -1,0 +1,20 @@
+apiVersion: addons.kubernetes.vmware.com/v1alpha1
+kind: AddonRepository
+metadata:
+  name: descheduler-repo
+  namespace: vmware-system-vks-public
+  annotations:
+    addons.kubernetes.vmware.com/package-offerings: |
+      {
+        "repositoryVersion": "1.0.0"
+      }
+spec:
+  targetRepositoryName: descheduler
+  version: "1.0.0"
+  fetch:
+    helmRepository:
+      url: https://kubernetes-sigs.github.io/descheduler/
+  addonFilters:
+    - name: descheduler
+      versions:
+        - "0.34.0"
